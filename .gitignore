@@ -1,0 +1,7 @@
+model/*
+!model/
+**/__pycache__
+/log
+result/*
+!result/
+*.pkl
