@@ -40,3 +40,24 @@ python main.py --dataset wmt19 --device 0 --vision_constraint --percent 0.2 --th
 ```
 
 Results will be saved in `./result/`
+
+## Citation
+
+If our work or this repo is useful for your research, please cite our paper as follows:
+
+```
+@inproceedings{ijcai2024p730,
+  title     = {Vision-fused Attack: Advancing Aggressive and Stealthy Adversarial Text against Neural Machine Translation},
+  author    = {Xue, Yanni and Hao, Haojie and Wang, Jiakai and Sheng, Qiang and Tao, Renshuai and Liang, Yu and Feng, Pu and Liu, Xianglong},
+  booktitle = {Proceedings of the Thirty-Third International Joint Conference on
+               Artificial Intelligence, {IJCAI-24}},
+  publisher = {International Joint Conferences on Artificial Intelligence Organization},
+  editor    = {Kate Larson},
+  pages     = {6606--6614},
+  year      = {2024},
+  month     = {8},
+  note      = {Main Track},
+  doi       = {10.24963/ijcai.2024/730},
+  url       = {https://doi.org/10.24963/ijcai.2024/730},
+}
+```
