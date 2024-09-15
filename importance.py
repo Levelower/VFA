@@ -4,7 +4,10 @@ from torch.nn import Softmax
 from transformers import BertTokenizer, BertForMaskedLM
 
 
-class saliency_model:
+class importance_model(object):
+    # Choose different models based on different languages
+    # For Chinese, we use hgl/chinese-bert-wwm-ext
+    # For others, we use google-bert/bert-base-multilingual-cased
     def __init__(self, model_path, device):
         self.tokenizer = BertTokenizer.from_pretrained(model_path)
         self.model = BertForMaskedLM.from_pretrained(model_path)
@@ -15,28 +18,33 @@ class saliency_model:
         self.model.eval()
         self.norm = Softmax(dim=1)
 
+
+    # Further segmentation of each word using the current model
     def subword_split(self, words):
         tokenized_text = []
-        indexDic = {}
+        index_dict = {}
         word_count = 0
-        char_count = 0
+        character_count = 0
         for word in words:
-            charsList = self.tokenizer.tokenize(word)
-            charIdxes = []
-            for c in charsList:
+            character_list = self.tokenizer.tokenize(word)
+            character_ids = []
+            for c in character_list:
                 tokenized_text.append(c)
-                charIdxes.append(char_count)
-                char_count += 1
+                character_ids.append(character_count)
+                character_count += 1
 
-            indexDic[word_count] = charIdxes
+            index_dict[word_count] = character_ids
             word_count += 1
 
-        return tokenized_text, indexDic
+        return tokenized_text, index_dict
     
-    def mask_and_predict(self, tokenized_text, indexDic, word_idx):
+
+    # Mask out the characters 
+    # Predict the probability of all words appearing at that position
+    def mask_and_predict(self, tokenized_text, index_dict, word_idx):
         _tokenized_text = tokenized_text.copy()
-        maskCharIdxes = indexDic[word_idx]
-        for masked_idx in maskCharIdxes:
+        mask_character_ids = index_dict[word_idx]
+        for masked_idx in mask_character_ids:
             _tokenized_text[masked_idx] = '[MASK]'
 
         indexed_tokens = self.tokenizer.convert_tokens_to_ids(_tokenized_text)
@@ -52,33 +60,54 @@ class saliency_model:
             outputs = self.model(tokens_tensor, token_type_ids=segments_tensors)
             predictions = outputs[0]
 
-        return maskCharIdxes, predictions
+        return mask_character_ids, predictions
     
-    def calc_wordProb(self, tokenized_text, maskCharIdxes, predictions):
-        wordProb = 1
-        for masked_idx in maskCharIdxes:
+
+    # Due to the presence of many characters in a word
+    # The word probability is obtained from the character probability
+    def calc_word_probability(self, tokenized_text, mask_character_ids, predictions):
+        word_probability = 1
+        for masked_idx in mask_character_ids:
             confidence_scores = predictions[:, masked_idx, :]
             confidence_scores = self.norm(confidence_scores)
 
             masked_token = tokenized_text[masked_idx]
             masked_token_id = self.tokenizer.convert_tokens_to_ids([masked_token])[0]
-            orig_prob = confidence_scores[0, masked_token_id].item()
+            character_probability = confidence_scores[0, masked_token_id].item()
 
-            wordProb = wordProb*orig_prob
+            word_probability = np.sqrt(word_probability * character_probability)
 
-        return wordProb
+        return word_probability
 
+
+    # Overall importance score function
     def scores(self, words):
-        tokenized_text, indexDic = self.subword_split(words)
+        tokenized_text, index_dict = self.subword_split(words)
 
-        saliency = np.zeros(len(words), dtype=float)
+        importance = np.zeros(len(words), dtype=float)
 
         for i in range(len(words)):
-            maskCharIdxes, predictions = self.mask_and_predict(tokenized_text, indexDic, i)
+            mask_character_ids, predictions = self.mask_and_predict(
+                tokenized_text, index_dict, i
+            )
 
-            wordProb = self.calc_wordProb(tokenized_text, maskCharIdxes, predictions)
+            word_probability = self.calc_word_probability(
+                tokenized_text, mask_character_ids, predictions
+            )
 
-            saliency[i] = 1 - wordProb
+            importance[i] = 1 - word_probability
 
-        return saliency
+        return importance
 
+
+if __name__ == '__main__':
+    model_path = './model/chinese-bert-wwm-ext'
+
+    device = torch.device('cuda:1')
+
+    model = importance_model(model_path, device)
+
+    words = ['白天', '天气', '很好',]
+    importance = model.scores(words)
+
+    print(importance)

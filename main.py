@@ -22,47 +22,63 @@ def get_data(in_path, src, tgt):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='argparse learning')
+    parser = argparse.ArgumentParser(description='VFA')
     parser.add_argument('--src', type=str, default='zh')
     parser.add_argument('--tgt', type=str, default='en')
     parser.add_argument('--dataset', type=str, default='wmt19')
 
     parser.add_argument('--device', type=int, default=0)
 
-    parser.add_argument('--merge', type=int, default=3)
-
-    parser.add_argument('--percent', type=str, default='0.2', help='1, 2, 0.x')
-    parser.add_argument('--thresh', type=float, default=0.95, help='0.x')
-    parser.add_argument('--sc', type=str, default='all', help='all、glyph and radicals')
-    parser.add_argument('--search_method', type=str, default='vision', help='vision and semantics')
+    parser.add_argument('--r', type=float, default=0.2, help='0.x')
+    parser.add_argument('--theta', type=float, default=0.95, help='0.x')
+    parser.add_argument('--S', type=str, default='all', help='all、pix or rad')
+    parser.add_argument('--beta', type=float, default=0.9, help='0.x')
     parser.add_argument('--vision_constraint', action='store_true', help='add or not')
 
     args = parser.parse_args()
-
     if args.src == 'zh':
-        language = 'chinese'
+        source_language = 'Chinese'
     else:
-        language = 'japanese'
+        source_language = 'Japanese'
 
-
-    data_path = f'./data/{language}/{args.dataset}/{args.dataset}.json'
+    data_path = f'./data/{source_language}/{args.dataset}.json'
 
     data_eval = get_data(data_path, args.src, args.tgt)
 
+    # Translation models for various languages
     if args.src == 'zh':
-        model_src_path = './model/opus-mt-zh-en'
-        model_tgt_path = './model/opus-mt-en-zh'
+        model_tgt_path = './model/opus-mt-zh-en'
+        model_aux_path = './model/opus-mt-en-zh'
     else:
-        model_src_path = './model/opus-mt-ja-en'
-        model_tgt_path = './model/opus-tatoeba-en-ja'
+        model_tgt_path = './model/opus-mt-ja-en'
+        model_aux_path = './model/opus-tatoeba-en-ja'
+
+    # Selected a specific importance ranking model for Chinese 
+    # And a multilingual adaptation model for other languages
+    if args.src == 'zh':
+        importance_model_path='./model/chinese-bert-wwm-ext'
+    else:
+        importance_model_path='./model/bert-base-multilingual-cased'
+
+    # Chinese can use radical similarity modules
+    # while other languages only use pixel similarity modules
+    if args.src == 'zh':
+        S=args.S
+    else:
+        S='pix'
+
+    # Only used for testing English translation results
+    semantics_model_path='./model/all-MiniLM-L6-v2'
 
     device = torch.device(f'cuda:{str(args.device)}')
-    
+
     attacker = Attacker(
-        model_src_path, model_tgt_path, device=device, method=args.merge,
-        percent=args.percent, thresh=args.thresh, sc=args.sc,
-        search_method=args.search_method,
-        vision_constraint=args.vision_constraint
+        args.src, args.tgt,
+        model_tgt_path, model_aux_path, 
+        importance_model_path=importance_model_path,
+        semantics_model_path=semantics_model_path,
+        device=device, r=args.r, theta=args.theta, S=S, 
+        beta=args.beta, vision_constraint=args.vision_constraint
     )
 
     atk_contents = []
@@ -75,10 +91,10 @@ if __name__ == '__main__':
         flag, atk_content = attacker.attack(text_src, text_tgt)
         atk_contents.append(atk_content)
 
-        ori_translation = attacker.translate_src(text_src)
+        ori_translation = attacker.translate_to_tgt(text_src)
         ori_translations.append(ori_translation)
 
-        atk_translation = attacker.translate_src(atk_content)
+        atk_translation = attacker.translate_to_tgt(atk_content)
         atk_translations.append(atk_translation)
 
         if flag is None:
@@ -97,7 +113,13 @@ if __name__ == '__main__':
     data_eval['atk_translate'] = atk_translations
     data_eval['signals'] = signals
 
-    result_dir = f'./result/{language}/{args.dataset}'
+    result_dir = f'./result/{source_language}'
     if not os.path.exists(result_dir):
         os.makedirs(result_dir)
-    data_eval.to_csv(f'{result_dir}/{args.dataset}_merge_{str(args.merge)}_{args.percent}_{str(args.thresh)}_{args.sc}_{args.search_method}_{str(args.vision_constraint)}.csv', sep='\t', index=False)
+    result_parameters = [
+        args.src, args.tgt,
+        args.dataset, str(args.r), str(args.theta),
+        S, str(args.beta), str(args.vision_constraint)    
+    ]
+    result_name = '-'.join(result_parameters)
+    data_eval.to_csv(f'{result_dir}/{result_name}.csv', sep='\t', index=False)
