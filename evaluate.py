@@ -111,8 +111,8 @@ def get_data(in_path):
 
 
 if __name__ == '__main__':
-    res_path = './result/Japanese/ja-en-opus100-0.2-0.95-pix-0.9-True.csv'
-    src_l = 'ja'
+    res_path = './result/Japanese/zh-en-wmt19-0.2-0.95-all-0.9-True.csv'
+    src_l = 'zh'
     tgt_l = 'en'
 
     data_eval = get_data(res_path)

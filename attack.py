@@ -288,7 +288,7 @@ if __name__ == '__main__':
     beta=0.9
     vision_constraint=True
 
-    device = torch.device('cuda:4')
+    device = torch.device('cuda:0')
 
     attacker = Attacker(
         src, tgt,
