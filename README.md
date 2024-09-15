@@ -20,6 +20,7 @@ pip install -r requirements.txt
 Please download the following models from Huggingface:
 - sentence-transformers/all-MiniLM-L6-v2
 - hgl/chinese-bert-wwm-ext
+- google-bert/bert-base-multilingual-cased
 - Helsinki-NLP/opus-mt-en-zh
 - Helsinki-NLP/opus-mt-zh-en
 - Helsinki-NLP/opus-tatoeba-en-ja
@@ -36,7 +37,7 @@ python TIT.py
 ```
 Then execute the following command to obtain the adversarial texts:
 ```
-python main.py --dataset wmt19 --device 0 --vision_constraint --percent 0.2 --thresh 0.95
+python main.py --src zh --tgt en --dataset wmt19 --device 0 --vision_constraint
 ```
 
 Results will be saved in `./result/`
