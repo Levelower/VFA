@@ -1,3 +1,6 @@
+python pixel.py
+python radical.py
+python TIT.py
 python main.py --src zh --tgt en --dataset wmt19 --device 0 --vision_constraint
 python main.py --src zh --tgt en --dataset wmt18 --device 0 --vision_constraint
 python main.py --src zh --tgt en --dataset ted --device 0 --vision_constraint
